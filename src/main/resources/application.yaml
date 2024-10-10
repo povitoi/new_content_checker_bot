@@ -3,3 +3,6 @@ spring:
     driver-class-name: org.h2.Driver
     username: sa
     url: jdbc:h2:./database/tool-masters-bot-db
+  jpa:
+    hibernate:
+      ddl-auto: update

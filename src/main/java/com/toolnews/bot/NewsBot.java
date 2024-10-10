@@ -1,27 +1,39 @@
 package com.toolnews.bot;
 
+import com.toolnews.bot.command.CreateSettingCommandHandler;
+import com.toolnews.bot.command.HelpCommandHandler;
+import com.toolnews.bot.command.StartCommandHandler;
+import com.toolnews.bot.entity.enumeration.LastCommandState;
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.BotSession;
 import org.telegram.telegrambots.longpolling.interfaces.LongPollingUpdateConsumer;
 import org.telegram.telegrambots.longpolling.starter.AfterBotRegistration;
 import org.telegram.telegrambots.longpolling.starter.SpringLongPollingBot;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
+import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
+import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
+import java.util.Arrays;
+
 @Component
+@RequiredArgsConstructor
 public class NewsBot implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
 
-    private static final long ALLOWED_USER_ID = 701705313L;
+    public static final long CHAT_ID = 701705313L;
     private static final long TARGET_GROUP_CHAT_ID = -4508940743L;
 
     private final TelegramClient client;
 
-    public NewsBot() {
-        client = new OkHttpTelegramClient(getBotToken());
+    @AfterBotRegistration
+    public void afterRegistration(BotSession botSession) {
+        System.out.println("Registered bot running state is: " + botSession.isRunning());
     }
 
     @Override
@@ -34,68 +46,70 @@ public class NewsBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         return this;
     }
 
-    @AfterBotRegistration
-    public void afterRegistration(BotSession botSession) {
-        System.out.println("Registered bot running state is: " + botSession.isRunning());
-    }
-
     private boolean isUserAllowed(Long userId) {
-        return userId.equals(ALLOWED_USER_ID);
+        return userId.equals(CHAT_ID);
     }
 
-    // -----------------------------------------------------------------------------------------------
-    // UTILS START
+    // --------------------------------------------------------------------------------------------------
+
+    // COMMAND PROCESSING START
     //
     //
 
-    public void sendText(Long chatId, String text) {
-        SendMessage message = SendMessage.builder()
-                .chatId(chatId)
-                .text(text)
-                .build();
+    public void sendMessage(SendMessage message) {
 
         try {
             client.execute(message);
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
-    }
-
-    //
-    //
-    // UTILS END
-
-    // -----------------------------------------------------------------------------------------------
-
-    // COMMANDS START
-    //
-    //
-
-    private void handleStartCommand(Long chatId) {
-        String startCommandText = """
-                Для настройки бота используются следующие команды:
-                /create_setting - создать связку настроек.
-                /view_settings - посмотреть существующие.
-                /delete_setting - удалить.
-                """;
-        sendText(chatId, startCommandText);
-    }
-
-    private void handleCreateSettingCommand(Long chatId) {
-
-        String createSettingCommandText = """
-                Для создания связки настроек для сайта необходимо выполнить следующие шаги:
-                1. Перейти на сайт, на котором нужно проверять новости и зайти в раздел новостей.
-                    Скопировать весь текст ссылки в адресной строке и отправить боту.
-                2. Затем нажать на ссылку любой из новостей и также отправить ссылку боту.
-                3. 
-                """;
 
     }
 
-    //
-    //
-    // COMMANDS END
+    public void sendText(String text) {
+
+        SendMessage send = SendMessage.builder()
+                .chatId(CHAT_ID)
+                .text(text)
+                .build();
+
+        sendMessage(send);
+
+    }
+
+    public void setLastCommandState(LastCommandState lastCommand) {
+        lastCommandState = lastCommand;
+    }
+
+    @PostConstruct
+    public void registerGeneralCommands() {
+
+        SetMyCommands commands = new SetMyCommands(
+                Arrays.asList(
+                        new BotCommand("/create_setting",
+                                "Создать связку настроек"),
+                        new BotCommand("/settings_list",
+                                "Посмотреть существующие"),
+                        new BotCommand("/help",
+                                "Помощь")
+                ),
+                new BotCommandScopeDefault(),
+                null
+        );
+
+        try {
+            client.execute(commands);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    private final StartCommandHandler startHandler;
+    private final CreateSettingCommandHandler createSettingHandler;
+    private final HelpCommandHandler helpHandler;
+
+    private static LastCommandState lastCommandState;
 
     @Override
     public void consume(Update update) {
@@ -103,26 +117,49 @@ public class NewsBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         if (update.hasMessage()) {
 
             Long chatId = update.getMessage().getChatId();
-
             if (isUserAllowed(chatId)) {
 
                 String messageText = update.getMessage().getText();
+                switch (messageText) {
+                    case "/start" -> {
 
-                if (messageText.equals("/start")) {
+                        startHandler.handle(this);
+                        return;
 
-                    handleStartCommand(chatId);
+                    }
+                    case "/create_setting" -> {
 
-                } else if (messageText.equals("/create_setting")) {
-                    handleCreateSettingCommand(chatId);
+                        createSettingHandler.resetState();
+                        createSettingHandler.handle(this);
+                        return;
+
+                    }
+                    case "/help" -> {
+
+                        helpHandler.handle(this);
+                        return;
+
+                    }
+                }
+
+                if (lastCommandState == LastCommandState.CREATE_SETTING) {
+
+                    createSettingHandler.fillSiteSettings(this, messageText);
+
                 }
 
 
             } else {
-                sendText(chatId, "Вы не можете использовать этого бота");
+                // обработать случай, когда боту написал левый чувак
+                // выйти из группы, канала и т д
             }
 
         }
 
     }
+
+    //
+    //
+    // COMMAND PROCESSING END
 
 }
