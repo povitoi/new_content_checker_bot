@@ -7,10 +7,17 @@ import com.toolnews.bot.entity.enumeration.SettingState;
 import com.toolnews.bot.entity.enumeration.TimeSettingOption;
 import com.toolnews.bot.entity.enumeration.TimeSettingUnit;
 import com.toolnews.bot.repository.SiteSettingRepository;
+import com.toolnews.bot.scheduler.SchedulerManager;
 import lombok.RequiredArgsConstructor;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.sql.Time;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
@@ -21,8 +28,12 @@ public class CreateSettingCommandHandler {
 
     private final SiteSettingRepository siteSettingRepository;
 
+    private final SchedulerManager schedulerManager;
+
     private SettingState state = SettingState.CREATED;
-    private String url;
+    private String listUrl;
+    private String lastElementUrl;
+    private String elementWrapper;
     private TimeSettingOption timeSettingOption;
     private TimeSettingUnit timeSettingUnit;
     private Time newsCheckTime;
@@ -33,7 +44,9 @@ public class CreateSettingCommandHandler {
     public void resetState() {
 
         state = SettingState.CREATED;
-        url = null;
+        listUrl = null;
+        lastElementUrl = null;
+        elementWrapper = null;
         timeSettingOption = null;
         timeSettingUnit = null;
         newsCheckTime = null;
@@ -50,11 +63,11 @@ public class CreateSettingCommandHandler {
         bot.sendText(createSettingCommandText);
 
         String urlRequest = """
-                Введите ссылку на одну из новостей.
+                Введите ссылку на страницу новостей.
                 """;
         bot.sendText(urlRequest);
 
-        state = SettingState.WAITING_URL;
+        state = SettingState.WAITING_LIST_URL;
         bot.setLastCommandState(LastCommandState.CREATE_SETTING);
 
     }
@@ -63,7 +76,7 @@ public class CreateSettingCommandHandler {
     @Transactional
     public void fillSiteSettings(NewsBot bot, String messageText) {
 
-        if (state == SettingState.WAITING_URL) {
+        if (state == SettingState.WAITING_LIST_URL) {
 
             if (invalidUrl(messageText)) {
                 bot.sendText("""
@@ -76,7 +89,26 @@ public class CreateSettingCommandHandler {
                 return;
             }
 
-            url = messageText;
+            listUrl = messageText;
+
+            state = SettingState.WAITING_LAST_ELEMENT_URL;
+            bot.sendText("Введите ссылку на одну из новостей.");
+
+        } else if (state == SettingState.WAITING_LAST_ELEMENT_URL) {
+
+            if (invalidUrl(messageText)) {
+                bot.sendText("""
+                        Неверный формат ссылки.
+                        
+                        Ссылка должна начинаться на http:// или https://
+                        
+                        Попробуйте еще раз.
+                        """);
+                return;
+            }
+
+            lastElementUrl = messageText;
+            elementWrapper = getElementWrapper(listUrl, lastElementUrl);
 
             state = SettingState.WAITING_TIME;
             bot.sendText("Введите время или периодичность проверки.");
@@ -97,7 +129,9 @@ public class CreateSettingCommandHandler {
 
                 newsCheckTime = Time.valueOf(LocalTime.parse(messageText));
                 siteSettingEntity = SiteSettingEntity.builder()
-                        .url(url)
+                        .listUrl(listUrl)
+                        .lastElementUrl(lastElementUrl)
+                        .elementWrapper(elementWrapper)
                         .timeSettingOption(timeSettingOption)
                         .newsCheckTime(newsCheckTime)
                         .build();
@@ -111,11 +145,10 @@ public class CreateSettingCommandHandler {
                 state = SettingState.WAITING_TIME_UNIT;
 
                 bot.sendText("""
-                    Введите значение периодичности.
-                    """);
+                        Введите значение периодичности.
+                        """);
 
             }
-
 
 
         } else if (state == SettingState.WAITING_TIME_UNIT) {
@@ -130,7 +163,9 @@ public class CreateSettingCommandHandler {
             timeSettingUnit = getTimeSettingUnit(messageText);
 
             siteSettingEntity = SiteSettingEntity.builder()
-                    .url(url)
+                    .listUrl(listUrl)
+                    .lastElementUrl(lastElementUrl)
+                    .elementWrapper(elementWrapper)
                     .timeSettingOption(timeSettingOption)
                     .timeSettingUnit(timeSettingUnit)
                     .everyTimeUnit(everyTimeUnit)
@@ -144,12 +179,58 @@ public class CreateSettingCommandHandler {
     }
 
 
-
     @Transactional
     public void settingIsReady(NewsBot bot) {
         siteSettingRepository.save(siteSettingEntity);
         bot.setLastCommandState(LastCommandState.WITHOUT);
+        schedulerManager.runThisSettingInScheduler(siteSettingEntity);
         bot.sendText("Связка настроек создана и готова к работе. Ее можно увидеть в общем списке.");
+    }
+
+    private String getElementWrapper(String url, String elUrl) {
+
+        try {
+
+            Document document = Jsoup.connect(url).get();
+            Element element = document.selectFirst("a[href='" + elUrl + "']");
+
+            while (true) {
+                String className;
+                try {
+                    className = element.className();
+                } catch (NullPointerException e) {
+                    String relativeLink = getUriDifference(url, elUrl);
+                    element = document.selectFirst("a[href*='" + relativeLink + "']");
+                    lastElementUrl = element.attr("href");
+                    continue;
+                }
+                if (className.isEmpty()) {
+                    element = element.parent();
+                    continue;
+                }
+                return className;
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private String getUriDifference(String baseUrl, String fullUrl) throws MalformedURLException {
+
+        String basePath = new URL(baseUrl).getPath();
+        String fullPath = new URL(fullUrl).getPath();
+        if (fullPath.startsWith(basePath)) {
+            return fullPath.substring(basePath.length()).replaceFirst("^/", "");
+        } else {
+            return "";
+        }
+
+    }
+
+    private Element getParent(Element element) {
+        return element.parent();
     }
 
     private boolean invalidUrl(String url) {

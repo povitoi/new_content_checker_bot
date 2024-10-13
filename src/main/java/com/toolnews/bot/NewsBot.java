@@ -29,6 +29,12 @@ public class NewsBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
     public static final long CHAT_ID = 701705313L;
     private static final long TARGET_GROUP_CHAT_ID = -4508940743L;
 
+    private final StartCommandHandler startHandler;
+    private final CreateSettingCommandHandler createSettingHandler;
+    private final HelpCommandHandler helpHandler;
+
+    private static LastCommandState lastCommandState;
+
     private final TelegramClient client;
 
     @AfterBotRegistration
@@ -97,19 +103,22 @@ public class NewsBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                 null
         );
 
+//        var setting = SiteSettingEntity.builder()
+//                .id(0L)
+//                .timeSettingOption(TimeSettingOption.TIME_OF_DAY)
+//                .newsCheckTime(Time.valueOf(LocalTime.of(19, 34)))
+//                .listUrl("https://dlt.by/novinki-v-nashem-assortimente/")
+//                .lastElementUrl("https://dlt.by/brendi/produkciya_dlt/graver-dlt-g-100-art1151-new")
+//                .elementWrapper("image")
+//                .build();
+//        schedulerManager.runThisSettingInScheduler(setting);
+
         try {
             client.execute(commands);
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
-
     }
-
-    private final StartCommandHandler startHandler;
-    private final CreateSettingCommandHandler createSettingHandler;
-    private final HelpCommandHandler helpHandler;
-
-    private static LastCommandState lastCommandState;
 
     @Override
     public void consume(Update update) {

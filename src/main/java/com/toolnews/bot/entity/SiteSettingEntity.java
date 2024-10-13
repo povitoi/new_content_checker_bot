@@ -22,10 +22,20 @@ public class SiteSettingEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "c_url", nullable = false)
-    private String url;
 
-    @Column(name = "c_time_setting_option", nullable = false)
+
+    @Column(name = "c_list_url")
+    private String listUrl;
+
+    @Column(name = "c_last_element_url")
+    private String lastElementUrl;
+
+    @Column(name = "c_element_wrapper")
+    private String elementWrapper;
+
+
+
+    @Column(name = "c_time_setting_option")
     private TimeSettingOption timeSettingOption;
 
     @Column(name = "c_news_check_time")
