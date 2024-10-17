@@ -1,11 +1,9 @@
 package com.toolnews.bot.command;
 
+import com.toolnews.bot.BotUtils;
 import com.toolnews.bot.NewsBot;
 import com.toolnews.bot.entity.SiteSettingEntity;
-import com.toolnews.bot.entity.enumeration.LastCommandState;
-import com.toolnews.bot.entity.enumeration.SettingState;
-import com.toolnews.bot.entity.enumeration.TimeSettingOption;
-import com.toolnews.bot.entity.enumeration.TimeSettingUnit;
+import com.toolnews.bot.entity.enumeration.*;
 import com.toolnews.bot.repository.SiteSettingRepository;
 import com.toolnews.bot.scheduler.SchedulerManager;
 import lombok.RequiredArgsConstructor;
@@ -14,17 +12,26 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
+import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.sql.Time;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 
+import static com.toolnews.bot.NewsBot.CHAT_ID;
+
 @Service
 @RequiredArgsConstructor
-public class CreateSettingCommandHandler {
+public class CreateSettingCommandHandler implements CommandHandler {
 
     private final SiteSettingRepository siteSettingRepository;
 
@@ -32,12 +39,13 @@ public class CreateSettingCommandHandler {
 
     private SettingState state = SettingState.CREATED;
     private String listUrl;
-    private String lastElementUrl;
+    private String elementUrl;
     private String elementWrapper;
+    private LinkType linkType;
     private TimeSettingOption timeSettingOption;
-    private TimeSettingUnit timeSettingUnit;
+    private IntervalUnit intervalUnit;
     private Time newsCheckTime;
-    private Integer everyTimeUnit;
+    private Integer everyTimeValue;
 
     private SiteSettingEntity siteSettingEntity;
 
@@ -45,82 +53,99 @@ public class CreateSettingCommandHandler {
 
         state = SettingState.CREATED;
         listUrl = null;
-        lastElementUrl = null;
+        elementUrl = null;
         elementWrapper = null;
+        linkType = null;
         timeSettingOption = null;
-        timeSettingUnit = null;
+        intervalUnit = null;
         newsCheckTime = null;
-        everyTimeUnit = null;
+        everyTimeValue = null;
         siteSettingEntity = null;
 
     }
 
     public void handle(NewsBot bot) {
 
-        String createSettingCommandText = """
-                Создаю связку настроек...
-                """;
+        String createSettingCommandText = "Создаю связку настроек ⚙️";
         bot.sendText(createSettingCommandText);
 
-        String urlRequest = """
-                Введите ссылку на страницу новостей.
+        BotUtils.stopThread(1000);
+
+        String listUrlRequestText = """
+                1. Введите ссылку на страницу новостей ✍️
                 """;
-        bot.sendText(urlRequest);
+        bot.sendText(listUrlRequestText);
 
         state = SettingState.WAITING_LIST_URL;
-        bot.setLastCommandState(LastCommandState.CREATE_SETTING);
 
     }
 
-
     @Transactional
-    public void fillSiteSettings(NewsBot bot, String messageText) {
+    public void fillSiteSettings(NewsBot bot, Update update) {
+
+        String messageText = "";
+        if (update.hasMessage() && update.getMessage().hasText()) {
+            messageText = update.getMessage().getText();
+        }
 
         if (state == SettingState.WAITING_LIST_URL) {
 
             if (invalidUrl(messageText)) {
-                bot.sendText("""
-                        Неверный формат ссылки.
+
+                String invalidListUrlText = """
+                        Неверный формат ссылки 🫢
                         
                         Ссылка должна начинаться на http:// или https://
                         
-                        Попробуйте еще раз.
-                        """);
+                        Попробуйте еще раз, это бесплатно 🙂
+                        """;
+                bot.sendText(invalidListUrlText);
                 return;
             }
 
             listUrl = messageText;
 
             state = SettingState.WAITING_LAST_ELEMENT_URL;
-            bot.sendText("Введите ссылку на одну из новостей.");
+
+            String elementUrlRequestText = """
+                    2. Введите ссылку на одну из новостей 📝
+                    """;
+            bot.sendText(elementUrlRequestText);
 
         } else if (state == SettingState.WAITING_LAST_ELEMENT_URL) {
 
             if (invalidUrl(messageText)) {
-                bot.sendText("""
-                        Неверный формат ссылки.
+
+                String invalidElementUrlText = """
+                        Неверный формат ссылки 🫢
                         
                         Ссылка должна начинаться на http:// или https://
                         
-                        Попробуйте еще раз.
-                        """);
+                        Попробуйте еще раз, это бесплатно 🙂
+                        """;
+                bot.sendText(invalidElementUrlText);
                 return;
             }
 
-            lastElementUrl = messageText;
-            elementWrapper = getElementWrapper(listUrl, lastElementUrl);
+            elementUrl = messageText;
 
             state = SettingState.WAITING_TIME;
-            bot.sendText("Введите время или периодичность проверки.");
+
+            String timeRequestText = """
+                    3. Введите время или периодичность проверки ⏰
+                    """;
+            bot.sendText(timeRequestText);
 
         } else if (state == SettingState.WAITING_TIME) {
 
             if (invalidTime(messageText) && invalidInteger(messageText)) {
-                bot.sendText("""
-                        Недопустимый формат. Введите время в 24-часовом формате, либо число не больше 30.
+
+                String invalidTimeText = """
+                        Недопустимый формат 🧐
                         
-                        Попробуйте еще раз.
-                        """);
+                        Введите время в 24-часовом формате, либо число не больше 30
+                        """;
+                bot.sendText(invalidTimeText);
                 return;
             }
 
@@ -128,63 +153,109 @@ public class CreateSettingCommandHandler {
             if (timeSettingOption == TimeSettingOption.TIME_OF_DAY) {
 
                 newsCheckTime = Time.valueOf(LocalTime.parse(messageText));
-                siteSettingEntity = SiteSettingEntity.builder()
-                        .listUrl(listUrl)
-                        .lastElementUrl(lastElementUrl)
-                        .elementWrapper(elementWrapper)
-                        .timeSettingOption(timeSettingOption)
-                        .newsCheckTime(newsCheckTime)
-                        .build();
 
                 settingIsReady(bot);
-                //______________________________________________________________________________
 
             } else {
 
-                everyTimeUnit = Integer.parseInt(messageText);
+                everyTimeValue = Integer.parseInt(messageText);
                 state = SettingState.WAITING_TIME_UNIT;
 
-                bot.sendText("""
-                        Введите значение периодичности.
-                        """);
+                String timeUnitRequestText = """
+                        4. Выберите значение периодичности
+                        """;
+                SendMessage message = SendMessage
+                        .builder()
+                        .chatId(CHAT_ID)
+                        .text(timeUnitRequestText)
+                        .replyMarkup(
+                                InlineKeyboardMarkup
+                                        .builder()
+                                        .keyboardRow(
+                                                new InlineKeyboardRow(
+                                                        InlineKeyboardButton
+                                                                .builder()
+                                                                .text("Час")
+                                                                .callbackData("h")
+                                                                .build(),
+                                                        InlineKeyboardButton
+                                                                .builder()
+                                                                .text("День")
+                                                                .callbackData("d")
+                                                                .build())
+                                        )
+                                        .keyboardRow(
+                                                new InlineKeyboardRow(
+                                                        InlineKeyboardButton
+                                                                .builder()
+                                                                .text("Минута")
+                                                                .callbackData("m")
+                                                                .build()
+                                                )
+                                        ).build()
+                        ).build();
 
+                bot.sendMessage(message);
             }
 
 
         } else if (state == SettingState.WAITING_TIME_UNIT) {
 
-            if (invalidTimeUnit(messageText)) {
-                bot.sendText("""
-                        Неверное значение. Можно вводить только Ч и Д без учета регистра.
-                        """);
+            if (update.hasCallbackQuery())
+                intervalUnit = getIntervalUnit(update.getCallbackQuery());
+            else {
+                String invalidTimeUnit = """
+                        Пожалуйста, выберите значение по кнопкам 🙂
+                        """;
+                bot.sendText(invalidTimeUnit);
                 return;
             }
 
-            timeSettingUnit = getTimeSettingUnit(messageText);
-
-            siteSettingEntity = SiteSettingEntity.builder()
-                    .listUrl(listUrl)
-                    .lastElementUrl(lastElementUrl)
-                    .elementWrapper(elementWrapper)
-                    .timeSettingOption(timeSettingOption)
-                    .timeSettingUnit(timeSettingUnit)
-                    .everyTimeUnit(everyTimeUnit)
-                    .build();
-
             settingIsReady(bot);
-            //______________________________________________________________________________
 
         }
 
     }
 
-
     @Transactional
     public void settingIsReady(NewsBot bot) {
+
+        elementWrapper = getElementWrapper(listUrl, elementUrl);
+
+        if (timeSettingOption == TimeSettingOption.TIME_OF_DAY) {
+            siteSettingEntity = SiteSettingEntity
+                    .builder()
+                    .listUrl(listUrl)
+                    .elementUrl(elementUrl)
+                    .timeSettingOption(timeSettingOption)
+                    .newsCheckTime(newsCheckTime)
+                    .elementWrapper(elementWrapper)
+                    .linkType(linkType)
+                    .build();
+        } else if (timeSettingOption == TimeSettingOption.INTERVAL) {
+            siteSettingEntity = SiteSettingEntity
+                    .builder()
+                    .listUrl(listUrl)
+                    .elementUrl(elementUrl)
+                    .timeSettingOption(timeSettingOption)
+                    .intervalUnit(intervalUnit)
+                    .everyTimeValue(everyTimeValue)
+                    .lastCheck(Timestamp.valueOf(LocalDateTime.now()))
+                    .elementWrapper(elementWrapper)
+                    .linkType(linkType)
+                    .build();
+        }
+
         siteSettingRepository.save(siteSettingEntity);
-        bot.setLastCommandState(LastCommandState.WITHOUT);
         schedulerManager.runThisSettingInScheduler(siteSettingEntity);
-        bot.sendText("Связка настроек создана и готова к работе. Ее можно увидеть в общем списке.");
+
+        bot.setLastCommandState(LastCommandState.WITHOUT);
+
+        String settingReadyText = """
+                Связка настроек создана и запущена 🚀
+                Ее можно увидеть в общем списке 📋
+                """;
+        bot.sendText(settingReadyText);
     }
 
     private String getElementWrapper(String url, String elUrl) {
@@ -194,21 +265,21 @@ public class CreateSettingCommandHandler {
             Document document = Jsoup.connect(url).get();
             Element element = document.selectFirst("a[href='" + elUrl + "']");
 
-            while (true) {
-                String className;
-                try {
-                    className = element.className();
-                } catch (NullPointerException e) {
-                    String relativeLink = getUriDifference(url, elUrl);
-                    element = document.selectFirst("a[href*='" + relativeLink + "']");
-                    lastElementUrl = element.attr("href");
-                    continue;
-                }
-                if (className.isEmpty()) {
-                    element = element.parent();
-                    continue;
-                }
-                return className;
+            if (element != null) {
+
+                linkType = LinkType.ABSOLUTE;
+
+                return findClassName(element);
+
+            } else {
+
+                linkType = LinkType.RELATIVE;
+
+                elUrl = new URL(elUrl).getFile().replaceFirst("^/", "");
+                element = document.selectFirst("a[href*='" + elUrl + "']");
+
+                return findClassName(element);
+
             }
 
         } catch (IOException e) {
@@ -217,20 +288,15 @@ public class CreateSettingCommandHandler {
         return null;
     }
 
-    private String getUriDifference(String baseUrl, String fullUrl) throws MalformedURLException {
-
-        String basePath = new URL(baseUrl).getPath();
-        String fullPath = new URL(fullUrl).getPath();
-        if (fullPath.startsWith(basePath)) {
-            return fullPath.substring(basePath.length()).replaceFirst("^/", "");
-        } else {
-            return "";
+    private String findClassName(Element element) {
+        String className = element.attr("class");
+        if (className.isEmpty()) {
+            while (className.isEmpty()) {
+                element = element.parent();
+                className = element.attr("class");
+            }
         }
-
-    }
-
-    private Element getParent(Element element) {
-        return element.parent();
+        return className;
     }
 
     private boolean invalidUrl(String url) {
@@ -246,12 +312,14 @@ public class CreateSettingCommandHandler {
 
     }
 
-    private TimeSettingUnit getTimeSettingUnit(String value) {
+    private IntervalUnit getIntervalUnit(CallbackQuery callbackQuery) {
 
-        if (value.equalsIgnoreCase("Ч"))
-            return TimeSettingUnit.HOUR;
+        if (callbackQuery.getData().equalsIgnoreCase("m"))
+            return IntervalUnit.MINUTE;
+        else if (callbackQuery.getData().equalsIgnoreCase("h"))
+            return IntervalUnit.HOUR;
         else
-            return TimeSettingUnit.DAY;
+            return IntervalUnit.DAY;
 
     }
 
@@ -271,10 +339,6 @@ public class CreateSettingCommandHandler {
         } catch (NumberFormatException e) {
             return true;
         }
-    }
-
-    private boolean invalidTimeUnit(String value) {
-        return (!value.equalsIgnoreCase("ч")) && (!value.equalsIgnoreCase("д"));
     }
 
 }

@@ -5,17 +5,17 @@ import com.toolnews.bot.entity.enumeration.LastCommandState;
 import org.springframework.stereotype.Service;
 
 @Service
-public class StartCommandHandler {
+public class StartCommandHandler implements CommandHandler {
 
     public void handle(NewsBot bot) {
 
         String startCommandText = """
-                Приветствую, Навруз.
-                Я твой бот для сбора новостей с разных сайтов.
+                Приветствую 🤝
                 
-                Для настройки моей работы используй команды из меню.
+                Ваш бот-сборщик новостей готов к работе 🤖
                 
-                Чтобы почитать инструкцию, выбери среди команд /help.
+                Перед началом работы прочтите инструкцию 📋
+                Ее можно получить по команде /help.
                 """;
 
         bot.sendText(startCommandText);

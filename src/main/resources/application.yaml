@@ -1,4 +1,6 @@
 spring:
+  messages:
+    encoding: UTF-8
   datasource:
     driver-class-name: org.h2.Driver
     username: sa

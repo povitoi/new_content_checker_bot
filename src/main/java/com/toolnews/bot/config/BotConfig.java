@@ -1,6 +1,5 @@
 package com.toolnews.bot.config;
 
-import com.toolnews.bot.scheduler.Scheduler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.TaskScheduler;
@@ -9,8 +8,7 @@ import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 
 @Configuration
 public class BotConfig {
@@ -21,25 +19,15 @@ public class BotConfig {
     }
 
     @Bean
-    public ScheduledExecutorService newScheduledThreadPool() {
-        return Executors.newScheduledThreadPool(20);
+    public TaskScheduler newScheduledThreadPool() {
+        ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
+        taskScheduler.setPoolSize(30);
+        return taskScheduler;
     }
 
     @Bean
-    public TaskScheduler scheduledTaskRegistrar() {
-        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
-        scheduler.setPoolSize(20);
-        scheduler.initialize();
-        return scheduler;
-    }
-
-    @Bean
-    public ConcurrentHashMap<Long, Scheduler> schedulerMap() {
+    public ConcurrentHashMap<Long, ScheduledFuture<?>> concurrentHashMap() {
         return new ConcurrentHashMap<>();
     }
 
-//    @Override
-//    public void configureTasks(ScheduledTaskRegistrar taskRegistrar) {
-//        taskRegistrar.setScheduler(Executors.newScheduledThreadPool(20));
-//    }
 }

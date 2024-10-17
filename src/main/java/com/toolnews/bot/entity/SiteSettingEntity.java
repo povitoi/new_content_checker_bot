@@ -1,7 +1,8 @@
 package com.toolnews.bot.entity;
 
+import com.toolnews.bot.entity.enumeration.LinkType;
 import com.toolnews.bot.entity.enumeration.TimeSettingOption;
-import com.toolnews.bot.entity.enumeration.TimeSettingUnit;
+import com.toolnews.bot.entity.enumeration.IntervalUnit;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,6 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.sql.Time;
+import java.sql.Timestamp;
 
 @Entity
 @Data
@@ -27,11 +29,14 @@ public class SiteSettingEntity {
     @Column(name = "c_list_url")
     private String listUrl;
 
-    @Column(name = "c_last_element_url")
-    private String lastElementUrl;
+    @Column(name = "c_element_url")
+    private String elementUrl;
 
     @Column(name = "c_element_wrapper")
     private String elementWrapper;
+
+    @Column(name = "c_link_type")
+    private LinkType linkType;
 
 
 
@@ -41,10 +46,15 @@ public class SiteSettingEntity {
     @Column(name = "c_news_check_time")
     private Time newsCheckTime;
 
-    @Column(name = "c_every_time_unit")
-    private Integer everyTimeUnit;
 
-    @Column(name = "c_time_setting_unit")
-    private TimeSettingUnit timeSettingUnit;
+
+    @Column(name = "c_every_time_value")
+    private Integer everyTimeValue;
+
+    @Column(name = "c_interval_unit")
+    private IntervalUnit intervalUnit;
+
+    @Column(name = "c_last_check")
+    private Timestamp lastCheck;
 
 }
