@@ -13,6 +13,7 @@ import org.jsoup.nodes.Element;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
@@ -69,7 +70,7 @@ public class CreateSettingCommandHandler implements CommandHandler {
         String createSettingCommandText = "Создаю связку настроек ⚙️";
         bot.sendText(createSettingCommandText);
 
-        BotUtils.stopThread(1000);
+        BotUtils.stopThread(500);
 
         String listUrlRequestText = """
                 1. Введите ссылку на страницу новостей ✍️
@@ -201,9 +202,17 @@ public class CreateSettingCommandHandler implements CommandHandler {
 
         } else if (state == SettingState.WAITING_TIME_UNIT) {
 
-            if (update.hasCallbackQuery())
+            if (update.hasCallbackQuery()) {
                 intervalUnit = getIntervalUnit(update.getCallbackQuery());
-            else {
+
+                bot.sendMessage(EditMessageReplyMarkup
+                        .builder()
+                        .chatId(CHAT_ID)
+                        .messageId(update.getCallbackQuery().getMessage().getMessageId())
+                        .replyMarkup(InlineKeyboardMarkup.builder().build())
+                        .build());
+
+            } else {
                 String invalidTimeUnit = """
                         Пожалуйста, выберите значение по кнопкам 🙂
                         """;
@@ -225,16 +234,21 @@ public class CreateSettingCommandHandler implements CommandHandler {
         if (timeSettingOption == TimeSettingOption.TIME_OF_DAY) {
             siteSettingEntity = SiteSettingEntity
                     .builder()
+                    .running(true)
+                    .settingCreated(Timestamp.valueOf(LocalDateTime.now()))
                     .listUrl(listUrl)
                     .elementUrl(elementUrl)
                     .timeSettingOption(timeSettingOption)
                     .newsCheckTime(newsCheckTime)
+                    .lastCheck(Timestamp.valueOf(LocalDateTime.now()))
                     .elementWrapper(elementWrapper)
                     .linkType(linkType)
                     .build();
         } else if (timeSettingOption == TimeSettingOption.INTERVAL) {
             siteSettingEntity = SiteSettingEntity
                     .builder()
+                    .running(true)
+                    .settingCreated(Timestamp.valueOf(LocalDateTime.now()))
                     .listUrl(listUrl)
                     .elementUrl(elementUrl)
                     .timeSettingOption(timeSettingOption)
@@ -252,7 +266,7 @@ public class CreateSettingCommandHandler implements CommandHandler {
         bot.setLastCommandState(LastCommandState.WITHOUT);
 
         String settingReadyText = """
-                Связка настроек создана и запущена 🚀
+                Связка настроек запущена 🚀
                 Ее можно увидеть в общем списке 📋
                 """;
         bot.sendText(settingReadyText);

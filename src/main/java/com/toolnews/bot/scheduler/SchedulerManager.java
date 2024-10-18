@@ -59,4 +59,13 @@ public class SchedulerManager {
 
     }
 
+    public void stopThisSettingInScheduler(SiteSettingEntity setting) {
+
+        // проработать удаление настроек
+        // сейчас если настройка остановлена, не удаляется
+        runningSchedulers.get(setting.getId()).cancel(true);
+        runningSchedulers.remove(setting.getId());
+
+    }
+
 }

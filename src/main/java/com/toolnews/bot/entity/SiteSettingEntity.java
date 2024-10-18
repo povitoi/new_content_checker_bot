@@ -25,6 +25,14 @@ public class SiteSettingEntity {
     private Long id;
 
 
+    @Column(name = "c_running")
+    private boolean running;
+
+    @Column(name = "c_setting_created")
+    private Timestamp settingCreated;
+
+    @Column(name = "c_last_check")
+    private Timestamp lastCheck;
 
     @Column(name = "c_list_url")
     private String listUrl;
@@ -53,8 +61,5 @@ public class SiteSettingEntity {
 
     @Column(name = "c_interval_unit")
     private IntervalUnit intervalUnit;
-
-    @Column(name = "c_last_check")
-    private Timestamp lastCheck;
 
 }

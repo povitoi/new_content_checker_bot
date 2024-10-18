@@ -84,6 +84,8 @@ public class DefaultScheduler implements Scheduler {
             documentElements = getCleanList(documentElements, listUrl, elementUrl, linkType);
 
             if (documentElements.isEmpty()) {
+                setting.setLastCheck(Timestamp.valueOf(LocalDateTime.now()));
+                repository.save(setting);
                 return;
             } else {
 
@@ -96,10 +98,11 @@ public class DefaultScheduler implements Scheduler {
 
                 sendText("Появился новый материал на сайте \n" + hostUrl.getHost());
 
-                BotUtils.stopThread(1000);
+                BotUtils.stopThread(500);
 
                 for (String link : documentElements) {
                     sendText(link);
+                    BotUtils.stopThread(500);
                 }
 
             }

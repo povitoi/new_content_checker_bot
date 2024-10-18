@@ -6,7 +6,6 @@ import com.toolnews.bot.command.ListOfSettingsCommandHandler;
 import com.toolnews.bot.command.StartCommandHandler;
 import com.toolnews.bot.entity.SiteSettingEntity;
 import com.toolnews.bot.entity.enumeration.LastCommandState;
-import com.toolnews.bot.entity.enumeration.SettingState;
 import com.toolnews.bot.repository.SiteSettingRepository;
 import com.toolnews.bot.scheduler.SchedulerManager;
 import jakarta.annotation.PostConstruct;
@@ -19,6 +18,7 @@ import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateC
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.groupadministration.LeaveChat;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
 import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
@@ -35,13 +35,14 @@ public class NewsBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
     public static final long CHAT_ID = 701705313L;
     private static final long TARGET_GROUP_CHAT_ID = -4508940743L;
+    public static final String zonedId = "Europe/Kaliningrad";
+    public static final String zoneOffset = "+02:00";
 
     private final StartCommandHandler startHandler;
     private final CreateSettingCommandHandler createSettingHandler;
     private final ListOfSettingsCommandHandler listOfSettingsCommandHandler;
     private final HelpCommandHandler helpHandler;
 
-    private SettingState settingState;
     private static LastCommandState lastCommandState = LastCommandState.WITHOUT;
 
     private final TelegramClient client;
@@ -70,10 +71,13 @@ public class NewsBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         lastCommandState = lastCommand;
     }
 
-    public void sendMessage(SendMessage message) {
+    public void sendMessage(Object message) {
 
         try {
-            client.execute(message);
+            if (message instanceof SendMessage)
+                client.execute( (SendMessage) message );
+            if (message instanceof EditMessageReplyMarkup)
+                client.execute( (EditMessageReplyMarkup) message );
         } catch (TelegramApiException e) {
             log.error("An error occurred while trying to send a SendMessage. Stacktrace = {}",
                     e.getMessage());
@@ -117,7 +121,8 @@ public class NewsBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         List<SiteSettingEntity> allSettings = siteSettingRepository.findAll();
         if (!allSettings.isEmpty()) {
             for (SiteSettingEntity setting : allSettings) {
-                schedulerManager.runThisSettingInScheduler(setting);
+                if (setting.isRunning())
+                    schedulerManager.runThisSettingInScheduler(setting);
             }
         }
 
@@ -152,6 +157,7 @@ public class NewsBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
 
                         lastCommandState = LastCommandState.LIST_OF_SETTINGS;
                         listOfSettingsCommandHandler.handle(this);
+                        return;
 
                     }
                     case "/help" -> {
@@ -191,7 +197,13 @@ public class NewsBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
         } else if (update.hasCallbackQuery()) {
 
             if (lastCommandState == LastCommandState.CREATE_SETTING) {
+
                 createSettingHandler.fillSiteSettings(this, update);
+
+            } else if (lastCommandState == LastCommandState.LIST_OF_SETTINGS) {
+
+                listOfSettingsCommandHandler.showSettingsLink(this, update);
+
             }
 
         }
