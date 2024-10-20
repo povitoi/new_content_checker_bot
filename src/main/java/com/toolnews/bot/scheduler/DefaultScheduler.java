@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 
 import static com.toolnews.bot.NewsBot.CHAT_ID;
+import static com.toolnews.bot.NewsBot.TARGET_GROUP_CHAT_ID;
 
 
 @Slf4j
@@ -86,7 +87,6 @@ public class DefaultScheduler implements Scheduler {
             if (documentElements.isEmpty()) {
                 setting.setLastCheck(Timestamp.valueOf(LocalDateTime.now()));
                 repository.save(setting);
-                return;
             } else {
 
                 URL hostUrl = new URL(listUrl);
@@ -96,12 +96,12 @@ public class DefaultScheduler implements Scheduler {
                 setting.setLastCheck(Timestamp.valueOf(LocalDateTime.now()));
                 repository.save(setting);
 
-                sendText("Появился новый материал на сайте \n" + hostUrl.getHost());
+                sendText("Появился новый материал на сайте \n" + hostUrl.getHost(), TARGET_GROUP_CHAT_ID);
 
                 BotUtils.stopThread(500);
 
                 for (String link : documentElements) {
-                    sendText(link);
+                    sendText(link, TARGET_GROUP_CHAT_ID);
                     BotUtils.stopThread(500);
                 }
 
@@ -110,9 +110,14 @@ public class DefaultScheduler implements Scheduler {
         } catch (IOException e) {
             log.error("An error occurred while trying to retrieve a document from the network. Stacktrace = {}",
                     e.getMessage());
-        } catch (NullPointerException e) {
-            log.error("An error occurred while trying to get the value. Stacktrace = {}",
-                    e.getMessage());
+            try {
+                sendText("""
+                        При парсинге сайта по адресу %s произошла ошибка.
+                        Пожалуйста, удалите его настройки и введите снова.
+                        """.formatted(new URL(listUrl).getHost()), CHAT_ID);
+            } catch (MalformedURLException ex) {
+                throw new RuntimeException(ex);
+            }
         }
 
         if (setting.getTimeSettingOption() == TimeSettingOption.INTERVAL) {
@@ -133,11 +138,11 @@ public class DefaultScheduler implements Scheduler {
 
     }
 
-    private void sendText(String text) {
+    private void sendText(String text, long to) {
 
         SendMessage message = SendMessage.builder()
                 .text(text)
-                .chatId(CHAT_ID)
+                .chatId(to)
                 .build();
 
         try {

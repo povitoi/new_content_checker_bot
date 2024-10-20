@@ -8,3 +8,9 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+
+telegram:
+  bot:
+    token:
+    allowedChatId:
+    zonedId:

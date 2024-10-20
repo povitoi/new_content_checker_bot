@@ -1,14 +1,15 @@
 package com.toolnews.bot.command;
 
-import com.toolnews.bot.NewsBot;
 import org.springframework.stereotype.Service;
 
 @Service
 public class HelpCommandHandler implements CommandHandler {
 
-    public void handle(NewsBot bot) {
+    public String handle() {
 
-        String createSettingCommandText = """
+        return """
+                Перед началом работы необходимо добавить бота в целевую группу, иначе настройки не будут приняты.
+                
                 /create_setting - создает новую связку настроек.
                 
                 Для этого необходимо ввести следующие данные поэтапно:
@@ -21,14 +22,12 @@ public class HelpCommandHandler implements CommandHandler {
                 
                 4. Если на предыдущем этапе введено число, то здесь нужно выбрать "Час" или "День". Если было введено число 5 и выбран "День", бот будет проверять новости каждые 5 дней.
                 
-                /list_of_settings - показывает список всех существующих связок.
+                /list_of_settings - показывает список всех существующих настроек.
                 
                 На каждую можно нажать, чтобы настроить или удалить.
                 
                 /help - показывает эту инструкцию.
                 """;
-
-        bot.sendText(createSettingCommandText);
 
     }
 

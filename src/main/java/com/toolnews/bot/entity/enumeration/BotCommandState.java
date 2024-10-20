@@ -1,6 +1,6 @@
 package com.toolnews.bot.entity.enumeration;
 
-public enum LastCommandState {
+public enum BotCommandState {
     WITHOUT,
     START,
     CREATE_SETTING,
