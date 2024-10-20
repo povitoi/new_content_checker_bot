@@ -17,7 +17,7 @@ import java.sql.Timestamp;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Table(schema = "tool-masters-bot", name = "t_site_setting")
+@Table(schema = "new-content-checker-bot", name = "t_site_setting")
 public class SiteSettingEntity {
 
     @Id

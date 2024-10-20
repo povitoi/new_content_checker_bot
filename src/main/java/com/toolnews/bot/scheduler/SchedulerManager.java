@@ -23,14 +23,7 @@ public class SchedulerManager {
     private final ConcurrentHashMap<Long, ScheduledFuture<?>> runningSchedulers;
     private final TelegramClient client;
 
-//    @PostConstruct
-//    public void runTaskCleanerScheduler() {
-//
-//        CronTrigger cron = new CronTrigger("0 0 12 * * *");
-//        Scheduler scheduler = new TaskCleanerScheduler(runningSchedulers);
-//        taskScheduler.schedule(scheduler, cron);
-//
-//    }
+
 
     public void runThisSettingInScheduler(SiteSettingEntity setting) {
 
@@ -61,8 +54,6 @@ public class SchedulerManager {
 
     public void stopThisSettingInScheduler(SiteSettingEntity setting) {
 
-        // проработать удаление настроек
-        // сейчас если настройка остановлена, не удаляется
         runningSchedulers.get(setting.getId()).cancel(true);
         runningSchedulers.remove(setting.getId());
 
