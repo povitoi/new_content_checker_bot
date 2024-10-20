@@ -1,6 +1,6 @@
 package com.toolnews.bot.entity.enumeration;
 
-public enum SettingState {
+public enum CreateSettingState {
     CREATED,
     WAITING_LIST_URL,
     WAITING_LAST_ELEMENT_URL,

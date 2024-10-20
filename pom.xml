@@ -9,10 +9,10 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.tool-news.bot</groupId>
-	<artifactId>ToolMastersBot</artifactId>
+	<artifactId>NewContentCheckerBot</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>ToolMastersBot</name>
-	<description>ToolMastersBot</description>
+	<name>NewContentCheckerBot</name>
+	<description>NewContentCheckerBot</description>
 	<url/>
 	<licenses>
 		<license/>

@@ -6,7 +6,4 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface SiteSettingRepository extends JpaRepository<SiteSettingEntity, Long> {
-
-
-
 }

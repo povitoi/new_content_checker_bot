@@ -10,7 +10,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.toolnews.bot.NewsBot.zoneOffset;
 import static com.toolnews.bot.NewsBot.zonedId;
 
 @Slf4j
@@ -38,15 +37,6 @@ public class BotUtils {
     public static String getCronExpression(SiteSettingEntity setting) {
         LocalTime time = setting.getNewsCheckTime().toLocalTime();
         return "0 " + time.getMinute() + " " + time.getHour() + " * * *";
-    }
-
-    private static long convertIntervalToMinutes(IntervalUnit unit, int value) {
-        if (unit == IntervalUnit.MINUTE) {
-            return value;
-        } else if (unit == IntervalUnit.HOUR)
-            return value * 60;
-        else
-            return value * 60 * 24;
     }
 
     public static Map<String, String> getTimeDurationUntilNextCheck(
@@ -136,10 +126,10 @@ public class BotUtils {
 
         Instant nextCheckInstant = getInstantForRunScheduler(
                 Timestamp.valueOf(lastCheck), intervalUnit, intervalValue);
-        Instant nowInstant = Instant.now();
+        Instant nowInstant = Instant.now().atZone(ZoneId.of(zonedId)).toInstant();
         Duration duration = Duration.between(nowInstant, nextCheckInstant);
 
-        LocalDateTime nextCheck = nextCheckInstant.atZone(ZoneId.of(zonedId)).toLocalDateTime();
+        LocalDateTime nextCheck = LocalDateTime.ofInstant(nextCheckInstant, ZoneId.of(zonedId));
         LocalDate nowDate = LocalDate.now();
         LocalTime nowTime = LocalTime.now();
         LocalDate tomorrow = nowDate.plusDays(1);
@@ -170,26 +160,33 @@ public class BotUtils {
         return sb.toString();
     }
 
+    private static long convertIntervalToMillis(IntervalUnit unit, int value) {
+        if (unit == IntervalUnit.MINUTE) {
+            return value * 60L * 1000L;
+        } else if (unit == IntervalUnit.HOUR)
+            return value * 60L * 60L * 1000L;
+        else
+            return value * 24L * 60L * 60L * 1000L;
+    }
+
     public static Instant getInstantForRunScheduler(
             Timestamp lastCheckTimestamp, IntervalUnit intervalUnit, int intervalValue) {
 
-        LocalDateTime lastCheck = lastCheckTimestamp.toLocalDateTime();
-        LocalDateTime now = LocalDateTime.now();
+        Instant lastCheck = lastCheckTimestamp.toInstant();
+        Instant now = Instant.now();
 
-        long elapsedTimeInMinutes = Duration.between(lastCheck, now).toMinutes();
-        long durationInMinutes = convertIntervalToMinutes(intervalUnit, intervalValue);
+        long elapsedTimeDuration = Duration.between(lastCheck, now).toMillis();
+        long intervalDuration = convertIntervalToMillis(intervalUnit, intervalValue);
 
-        if (elapsedTimeInMinutes < durationInMinutes) {
+        if (elapsedTimeDuration < intervalDuration) {
 
-            long remainingMinutes = durationInMinutes - elapsedTimeInMinutes;
-            return now.plusMinutes(remainingMinutes)
-                    .toInstant(ZoneOffset.of(zoneOffset));
+            long remainingTime = intervalDuration - elapsedTimeDuration;
+            return now.plusMillis(remainingTime).atZone(ZoneId.of(zonedId)).toInstant();
 
         } else {
-
-            return Instant.now();
-
+            return Instant.now().atZone(ZoneId.of(zonedId)).toInstant();
         }
+
     }
 
 }

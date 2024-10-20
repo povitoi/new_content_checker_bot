@@ -1,21 +1,19 @@
 package com.toolnews.bot.command;
 
-import com.toolnews.bot.BotUtils;
-import com.toolnews.bot.NewsBot;
 import com.toolnews.bot.entity.SiteSettingEntity;
-import com.toolnews.bot.entity.enumeration.*;
+import com.toolnews.bot.entity.enumeration.CreateSettingState;
+import com.toolnews.bot.entity.enumeration.IntervalUnit;
+import com.toolnews.bot.entity.enumeration.LinkType;
+import com.toolnews.bot.entity.enumeration.TimeSettingOption;
 import com.toolnews.bot.repository.SiteSettingRepository;
 import com.toolnews.bot.scheduler.SchedulerManager;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
-import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
-import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
@@ -28,17 +26,16 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 
-import static com.toolnews.bot.NewsBot.CHAT_ID;
-
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CreateSettingCommandHandler implements CommandHandler {
 
     private final SiteSettingRepository siteSettingRepository;
-
     private final SchedulerManager schedulerManager;
 
-    private SettingState state = SettingState.CREATED;
+    public static CreateSettingState state = CreateSettingState.CREATED;
+
     private String listUrl;
     private String elementUrl;
     private String elementWrapper;
@@ -50,9 +47,10 @@ public class CreateSettingCommandHandler implements CommandHandler {
 
     private SiteSettingEntity siteSettingEntity;
 
-    public void resetState() {
 
-        state = SettingState.CREATED;
+    public void resetStateSettingCreation() {
+
+        state = CreateSettingState.CREATED;
         listUrl = null;
         elementUrl = null;
         elementWrapper = null;
@@ -65,169 +63,149 @@ public class CreateSettingCommandHandler implements CommandHandler {
 
     }
 
-    public void handle(NewsBot bot) {
+    public String handle() {
 
-        String createSettingCommandText = "Создаю связку настроек ⚙️";
-        bot.sendText(createSettingCommandText);
+        switch (state) {
 
-        BotUtils.stopThread(500);
+            case CREATED -> {
+                return """
+                        Создаю связку настроек ⚙️
+                        """;
+            }
+            case WAITING_LIST_URL -> {
+                return """
+                        1. Введите ссылку на список новостей 📝
+                        """;
+            }
+            case WAITING_LAST_ELEMENT_URL -> {
+                return """
+                        2. Теперь ссылку на новейшую из них ✍️
+                        """;
+            }
+            case WAITING_TIME -> {
+                return """
+                        3. Время или периодичность проверки 🕰
+                        """;
+            }
+            case WAITING_TIME_UNIT -> {
+                return """
+                        4. Выберите значение периодичности 📆
+                        """;
+            }
+            case READY -> {
+                return """
+                        Связка настроена и запущена 🚀
+                        Ее можно увидеть в общем списке 📋
+                        """;
+            }
 
-        String listUrlRequestText = """
-                1. Введите ссылку на страницу новостей ✍️
-                """;
-        bot.sendText(listUrlRequestText);
+        }
 
-        state = SettingState.WAITING_LIST_URL;
+        return "";
 
     }
 
-    @Transactional
-    public void fillSiteSettings(NewsBot bot, Update update) {
+    public InlineKeyboardMarkup getKeyboardForState() {
 
-        String messageText = "";
-        if (update.hasMessage() && update.getMessage().hasText()) {
-            messageText = update.getMessage().getText();
+        if (state == CreateSettingState.WAITING_TIME_UNIT) {
+
+            return InlineKeyboardMarkup
+                    .builder()
+                    .keyboardRow(
+                            new InlineKeyboardRow(
+                                    InlineKeyboardButton
+                                            .builder()
+                                            .text("Час")
+                                            .callbackData("h")
+                                            .build(),
+                                    InlineKeyboardButton
+                                            .builder()
+                                            .text("День")
+                                            .callbackData("d")
+                                            .build())
+                    )
+                    .keyboardRow(
+                            new InlineKeyboardRow(
+                                    InlineKeyboardButton
+                                            .builder()
+                                            .text("Минута")
+                                            .callbackData("m")
+                                            .build()
+                            )
+                    ).build();
         }
 
-        if (state == SettingState.WAITING_LIST_URL) {
+        return InlineKeyboardMarkup.builder().build();
 
-            if (invalidUrl(messageText)) {
+    }
 
-                String invalidListUrlText = """
-                        Неверный формат ссылки 🫢
-                        
-                        Ссылка должна начинаться на http:// или https://
-                        
-                        Попробуйте еще раз, это бесплатно 🙂
-                        """;
-                bot.sendText(invalidListUrlText);
-                return;
-            }
+    public String fillListUrl(String url) {
 
-            listUrl = messageText;
-
-            state = SettingState.WAITING_LAST_ELEMENT_URL;
-
-            String elementUrlRequestText = """
-                    2. Введите ссылку на одну из новостей 📝
+        if (invalidUrl(url)) {
+            return """
+                    Неверный формат ссылки 🫢
+                    
+                    Ссылка должна начинаться на http:// или https://
+                    
+                    Попробуйте еще раз, это бесплатно 😌
                     """;
-            bot.sendText(elementUrlRequestText);
+        }
 
-        } else if (state == SettingState.WAITING_LAST_ELEMENT_URL) {
+        listUrl = url;
+        return "";
+    }
 
-            if (invalidUrl(messageText)) {
+    public String fillLastElementUrl(String url) {
 
-                String invalidElementUrlText = """
-                        Неверный формат ссылки 🫢
-                        
-                        Ссылка должна начинаться на http:// или https://
-                        
-                        Попробуйте еще раз, это бесплатно 🙂
-                        """;
-                bot.sendText(invalidElementUrlText);
-                return;
-            }
-
-            elementUrl = messageText;
-
-            state = SettingState.WAITING_TIME;
-
-            String timeRequestText = """
-                    3. Введите время или периодичность проверки ⏰
+        if (invalidUrl(url)) {
+            return """
+                    Неверный формат ссылки 🤨
+                    
+                    Ссылка должна начинаться на http:// или https://
+                    
+                    Попробуйте еще раз, это бесплатно 🙂
                     """;
-            bot.sendText(timeRequestText);
+        }
 
-        } else if (state == SettingState.WAITING_TIME) {
+        elementUrl = url;
+        return "";
 
-            if (invalidTime(messageText) && invalidInteger(messageText)) {
+    }
 
-                String invalidTimeText = """
-                        Недопустимый формат 🧐
-                        
-                        Введите время в 24-часовом формате, либо число не больше 30
-                        """;
-                bot.sendText(invalidTimeText);
-                return;
-            }
+    public String fillTime(String time) {
 
-            timeSettingOption = getTimeSettingOption(messageText);
-            if (timeSettingOption == TimeSettingOption.TIME_OF_DAY) {
+        if (invalidTime(time) && invalidInteger(time)) {
+            return """
+                    Недопустимое значение 🧐
+                    
+                    Введите время в 24-часовом формате, либо число от 1 до 30
+                    """;
+        }
 
-                newsCheckTime = Time.valueOf(LocalTime.parse(messageText));
+        timeSettingOption = getTimeSettingOption(time);
 
-                settingIsReady(bot);
+        if (timeSettingOption == TimeSettingOption.TIME_OF_DAY) {
 
-            } else {
+            newsCheckTime = Time.valueOf(LocalTime.parse(time));
+            return "0";
 
-                everyTimeValue = Integer.parseInt(messageText);
-                state = SettingState.WAITING_TIME_UNIT;
+        } else {
 
-                String timeUnitRequestText = """
-                        4. Выберите значение периодичности
-                        """;
-                SendMessage message = SendMessage
-                        .builder()
-                        .chatId(CHAT_ID)
-                        .text(timeUnitRequestText)
-                        .replyMarkup(
-                                InlineKeyboardMarkup
-                                        .builder()
-                                        .keyboardRow(
-                                                new InlineKeyboardRow(
-                                                        InlineKeyboardButton
-                                                                .builder()
-                                                                .text("Час")
-                                                                .callbackData("h")
-                                                                .build(),
-                                                        InlineKeyboardButton
-                                                                .builder()
-                                                                .text("День")
-                                                                .callbackData("d")
-                                                                .build())
-                                        )
-                                        .keyboardRow(
-                                                new InlineKeyboardRow(
-                                                        InlineKeyboardButton
-                                                                .builder()
-                                                                .text("Минута")
-                                                                .callbackData("m")
-                                                                .build()
-                                                )
-                                        ).build()
-                        ).build();
-
-                bot.sendMessage(message);
-            }
-
-
-        } else if (state == SettingState.WAITING_TIME_UNIT) {
-
-            if (update.hasCallbackQuery()) {
-                intervalUnit = getIntervalUnit(update.getCallbackQuery());
-
-                bot.sendMessage(EditMessageReplyMarkup
-                        .builder()
-                        .chatId(CHAT_ID)
-                        .messageId(update.getCallbackQuery().getMessage().getMessageId())
-                        .replyMarkup(InlineKeyboardMarkup.builder().build())
-                        .build());
-
-            } else {
-                String invalidTimeUnit = """
-                        Пожалуйста, выберите значение по кнопкам 🙂
-                        """;
-                bot.sendText(invalidTimeUnit);
-                return;
-            }
-
-            settingIsReady(bot);
+            everyTimeValue = Integer.parseInt(time);
+            return "1";
 
         }
 
     }
 
+    public void fillTimeUnit(String unit) {
+
+        intervalUnit = getIntervalUnit(unit);
+
+    }
+
     @Transactional
-    public void settingIsReady(NewsBot bot) {
+    public void settingIsReady() {
 
         elementWrapper = getElementWrapper(listUrl, elementUrl);
 
@@ -263,13 +241,6 @@ public class CreateSettingCommandHandler implements CommandHandler {
         siteSettingRepository.save(siteSettingEntity);
         schedulerManager.runThisSettingInScheduler(siteSettingEntity);
 
-        bot.setLastCommandState(LastCommandState.WITHOUT);
-
-        String settingReadyText = """
-                Связка настроек запущена 🚀
-                Ее можно увидеть в общем списке 📋
-                """;
-        bot.sendText(settingReadyText);
     }
 
     private String getElementWrapper(String url, String elUrl) {
@@ -297,7 +268,8 @@ public class CreateSettingCommandHandler implements CommandHandler {
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("An error occurred while trying to retrieve a document from the network. Stacktrace = {}",
+                    e.getMessage());
         }
         return null;
     }
@@ -326,11 +298,11 @@ public class CreateSettingCommandHandler implements CommandHandler {
 
     }
 
-    private IntervalUnit getIntervalUnit(CallbackQuery callbackQuery) {
+    private IntervalUnit getIntervalUnit(String callbackData) {
 
-        if (callbackQuery.getData().equalsIgnoreCase("m"))
+        if (callbackData.equalsIgnoreCase("m"))
             return IntervalUnit.MINUTE;
-        else if (callbackQuery.getData().equalsIgnoreCase("h"))
+        else if (callbackData.equalsIgnoreCase("h"))
             return IntervalUnit.HOUR;
         else
             return IntervalUnit.DAY;
@@ -349,7 +321,7 @@ public class CreateSettingCommandHandler implements CommandHandler {
     private boolean invalidInteger(String value) {
         try {
             int number = Integer.parseInt(value);
-            return number > 30;
+            return (number > 30) || (number < 1);
         } catch (NumberFormatException e) {
             return true;
         }

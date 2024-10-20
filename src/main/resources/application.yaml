@@ -8,3 +8,9 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+
+telegram:
+  bot:
+    token: 7414142924:AAFusHnSFZ71AzOY6I-82sYysFQdqh6uSXA
+    allowedChatId: 701705313
+    zonedId: Europe/Moscow

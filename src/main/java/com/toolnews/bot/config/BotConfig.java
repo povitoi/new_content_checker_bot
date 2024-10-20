@@ -21,7 +21,7 @@ public class BotConfig {
     @Bean
     public TaskScheduler newScheduledThreadPool() {
         ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
-        taskScheduler.setPoolSize(30);
+        taskScheduler.setPoolSize(50);
         return taskScheduler;
     }
 
