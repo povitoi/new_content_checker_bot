@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 
-import static com.toolnews.bot.NewsBot.CHAT_ID;
 import static com.toolnews.bot.NewsBot.TARGET_GROUP_CHAT_ID;
 
 
@@ -38,6 +37,8 @@ public class DefaultScheduler implements Scheduler {
     private final TelegramClient client;
     private TaskScheduler taskScheduler = null;
     private ConcurrentHashMap<Long, ScheduledFuture<?>> runningSchedulers;
+
+    private int failureCounter = 0;
 
     public DefaultScheduler(
             SiteSettingEntity setting, TelegramClient client, SiteSettingRepository repository) {
@@ -70,6 +71,8 @@ public class DefaultScheduler implements Scheduler {
 
         try {
             Document document = Jsoup.connect(listUrl).get();
+
+            failureCounter = 0;
 
             List<String> documentElements = document.getElementsByClass(elementWrapper)
                     .stream()
@@ -110,15 +113,23 @@ public class DefaultScheduler implements Scheduler {
         } catch (IOException e) {
             log.error("An error occurred while trying to retrieve a document from the network. Stacktrace = {}",
                     e.getMessage());
-            try {
-                sendText("""
-                        При парсинге сайта по адресу %s произошла ошибка.
-                        Пожалуйста, удалите его настройки и введите снова.
-                        """.formatted(new URL(listUrl).getHost()), CHAT_ID);
-            } catch (MalformedURLException ex) {
-                throw new RuntimeException(ex);
+
+            failureCounter++;
+
+            if (failureCounter > 10) {
+                log.error("Maximum attempts reached for site: {}. Stopping scheduler.", listUrl);
+
+                runningSchedulers.get(setting.getId()).cancel(true);
+                runningSchedulers.remove(setting.getId());
+                log.info("Scheduler for site with id {} has been stopped.", setting.getId());
+
+                setting.setRunning(false);
+                repository.save(setting);
+
             }
+
         }
+
 
         if (setting.getTimeSettingOption() == TimeSettingOption.INTERVAL) {
 

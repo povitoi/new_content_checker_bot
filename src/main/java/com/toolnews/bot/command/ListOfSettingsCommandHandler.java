@@ -14,8 +14,6 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,27 +56,22 @@ public class ListOfSettingsCommandHandler implements CommandHandler {
         int i = 1;
         for (SiteSettingEntity setting : settings) {
 
-            try {
-                String hostUrl = new URL(setting.getListUrl()).getHost();
-                String settingId = setting.getId().toString();
+            String hostUrl = BotUtils.toUrl(setting.getListUrl()).getHost();
+            String settingId = setting.getId().toString();
 
-                InlineKeyboardButton button = InlineKeyboardButton
-                        .builder()
-                        .text(i++ + ". " + hostUrl)
-                        .callbackData(settingId)
-                        .build();
+            String text = i++ + ". " + hostUrl;
+            if (!setting.isRunning())
+                text = text + " %s".formatted("⚠️");
 
-                InlineKeyboardRow row = new InlineKeyboardRow();
-                row.add(button);
-                rows.add(row);
+            InlineKeyboardButton button = InlineKeyboardButton
+                    .builder()
+                    .text(text)
+                    .callbackData(settingId)
+                    .build();
 
-            } catch (MalformedURLException e) {
-                log.error("""
-                                An error occurred while trying to convert
-                                the link to a host  in handle() method. Stacktrace = {}
-                                """
-                        , e.getMessage());
-            }
+            InlineKeyboardRow row = new InlineKeyboardRow();
+            row.add(button);
+            rows.add(row);
 
         }
 
@@ -101,16 +94,7 @@ public class ListOfSettingsCommandHandler implements CommandHandler {
         lastChoicedSetting = repository.findById(settingId).orElse(null);
 
         LocalDateTime created = lastChoicedSetting.getSettingCreated().toLocalDateTime();
-        String hostUrl = null;
-        try {
-            hostUrl = new URL(lastChoicedSetting.getListUrl()).getHost();
-        } catch (MalformedURLException e) {
-            log.error("""
-                            An error occurred while trying to convert the link
-                            to a host in showSettingsLink(NewsBot bot, Update update) method. Stacktrace = {}
-                            """
-                    , e.getMessage());
-        }
+        String hostUrl = BotUtils.toUrl(lastChoicedSetting.getListUrl()).getHost();
 
         String showSetting = """
                 Связка настроек для сайта:
@@ -171,6 +155,15 @@ public class ListOfSettingsCommandHandler implements CommandHandler {
 
         }
 
+        if (!lastChoicedSetting.isRunning()) {
+
+            showSetting = showSetting + """
+                    
+                    Проверка этого сайта приостановлена по техническим причинам. Пожалуйста, удалите эту связку настроек и создайте заново.
+                    """;
+
+        }
+
         InlineKeyboardButton deleteSchedulerButton = InlineKeyboardButton
                 .builder()
                 .text("Удалить")
@@ -199,17 +192,7 @@ public class ListOfSettingsCommandHandler implements CommandHandler {
 
     public SendMessage ButtonPressed(String data) {
 
-        String hostUrl = null;
-        try {
-            hostUrl = new URL(lastChoicedSetting.getListUrl()).getHost();
-        } catch (MalformedURLException e) {
-            log.error("""
-                            An error occurred while trying to convert the link
-                            to a host in showSettingsLink(
-                            NewsBot bot, Update update) method in callbackquery. Stacktrace = {}
-                            """
-                    , e.getMessage());
-        }
+        String hostUrl = BotUtils.toUrl(lastChoicedSetting.getListUrl()).getHost();
 
         SendMessage sendMessage = null;
 

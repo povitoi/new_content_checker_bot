@@ -350,6 +350,9 @@ public class NewsBot implements SpringLongPollingBot, LongPollingSingleThreadUpd
                                     fillTimeResponse = createSettingHandler.handle();
                                     sendText(fillTimeResponse, fromId);
 
+                                    CreateSettingCommandHandler.state =
+                                            CreateSettingState.CREATED;
+
                                 } else if (fillTimeResponse.equals("1")) {
 
                                     CreateSettingCommandHandler.state =

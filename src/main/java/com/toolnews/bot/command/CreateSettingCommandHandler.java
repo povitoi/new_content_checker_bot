@@ -1,5 +1,6 @@
 package com.toolnews.bot.command;
 
+import com.toolnews.bot.BotUtils;
 import com.toolnews.bot.entity.SiteSettingEntity;
 import com.toolnews.bot.entity.enumeration.CreateSettingState;
 import com.toolnews.bot.entity.enumeration.IntervalUnit;
@@ -167,7 +168,23 @@ public class CreateSettingCommandHandler implements CommandHandler {
                     """;
         }
 
+        if (invalidUrlChain(url)) {
+            return """
+                    Вы ввели ссылки с разных сайтов 🤨
+                    
+                    Пожалуйста, введите корректные ссылки.
+                    """;
+        }
+
         elementUrl = url;
+        elementWrapper = getElementWrapper(listUrl, elementUrl);
+
+        if (elementWrapper == null || elementWrapper.isEmpty()) {
+            return """
+                    Во время подготовки настроек произошла программная ошибка. Пожалуйста, введите их заново, будьте внимательнее при копировании и вставке ссылок.
+                    """;
+        }
+
         return "";
 
     }
@@ -206,8 +223,6 @@ public class CreateSettingCommandHandler implements CommandHandler {
 
     @Transactional
     public void settingIsReady() {
-
-        elementWrapper = getElementWrapper(listUrl, elementUrl);
 
         if (timeSettingOption == TimeSettingOption.TIME_OF_DAY) {
             siteSettingEntity = SiteSettingEntity
@@ -270,23 +285,40 @@ public class CreateSettingCommandHandler implements CommandHandler {
         } catch (IOException e) {
             log.error("An error occurred while trying to retrieve a document from the network. Stacktrace = {}",
                     e.getMessage());
+        } catch (NullPointerException e) {
+            log.error("An error occurred while trying to retrieve the tag class. Stacktrace = {}",
+                    e.getMessage());
+            resetStateSettingCreation();
+            return null;
         }
         return null;
     }
 
-    private String findClassName(Element element) {
+    private String findClassName(Element element) throws NullPointerException {
         String className = element.attr("class");
         if (className.isEmpty()) {
             while (className.isEmpty()) {
-                element = element.parent();
-                className = element.attr("class");
+                if (element != null) {
+                    element = element.parent();
+                    if (element != null)
+                        className = element.attr("class");
+                }
             }
         }
         return className;
     }
 
     private boolean invalidUrl(String url) {
-        return !url.startsWith("http://") && !url.startsWith("https://");
+        return BotUtils.toUrl(url) == null;
+    }
+
+    private boolean invalidUrlChain(String url) {
+
+        String listHost = BotUtils.toUrl(listUrl).getHost();
+        String elementHost = BotUtils.toUrl(url).getHost();
+
+        return !listHost.equals(elementHost);
+
     }
 
     private TimeSettingOption getTimeSettingOption(String value) {

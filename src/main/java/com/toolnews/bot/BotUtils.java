@@ -4,6 +4,8 @@ import com.toolnews.bot.entity.SiteSettingEntity;
 import com.toolnews.bot.entity.enumeration.IntervalUnit;
 import lombok.extern.slf4j.Slf4j;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.sql.Timestamp;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
@@ -14,6 +16,19 @@ import static com.toolnews.bot.NewsBot.zonedId;
 
 @Slf4j
 public class BotUtils {
+
+    public static URL toUrl(String urlString) {
+        try {
+            return new URL(urlString);
+        } catch (MalformedURLException e) {
+            log.error("""
+                                An error occurred while trying to convert
+                                the link to a host  in handle() method. Stacktrace = {}
+                                """
+                    , e.getMessage());
+        }
+        return null;
+    }
 
     public static void stopThread(long time) {
         try {
@@ -68,15 +83,19 @@ public class BotUtils {
 
             String every = null;
             String timeUnit = null;
-            if (unit == IntervalUnit.MINUTE) {
-                every = "Каждую ";
-                timeUnit = "минуту";
-            } else if (unit == IntervalUnit.HOUR) {
-                every = "Каждый ";
-                timeUnit = "час";
-            } else if (unit == IntervalUnit.DAY) {
-                every = "Каждый ";
-                timeUnit = "день";
+            switch (unit) {
+                case MINUTE -> {
+                    every = "Каждую ";
+                    timeUnit = "минуту";
+                }
+                case HOUR -> {
+                    every = "Каждый ";
+                    timeUnit = "час";
+                }
+                case DAY -> {
+                    every = "Каждый ";
+                    timeUnit = "день";
+                }
             }
 
             sb.append(every);
@@ -86,12 +105,10 @@ public class BotUtils {
         } else if (valueLastSymbol >= 2 && valueLastSymbol <= 4) {
 
             String timeUnit = null;
-            if (unit == IntervalUnit.MINUTE) {
-                timeUnit = "минуты";
-            } else if (unit == IntervalUnit.HOUR) {
-                timeUnit = "часа";
-            } else if (unit == IntervalUnit.DAY) {
-                timeUnit = "дня";
+            switch (unit) {
+                case MINUTE -> timeUnit = "минуты";
+                case HOUR -> timeUnit = "часа";
+                case DAY -> timeUnit = "дня";
             }
 
             sb.append("Каждые ");
@@ -102,12 +119,10 @@ public class BotUtils {
         } else if (valueLastSymbol >= 5 || valueLastTwoSymbols == 10 || valueLastTwoSymbols == 11) {
 
             String timeUnit = null;
-            if (unit == IntervalUnit.MINUTE) {
-                timeUnit = "минут";
-            } else if (unit == IntervalUnit.HOUR) {
-                timeUnit = "часов";
-            } else if (unit == IntervalUnit.DAY) {
-                timeUnit = "дней";
+            switch (unit) {
+                case MINUTE -> timeUnit = "минут";
+                case HOUR -> timeUnit = "часов";
+                case DAY -> timeUnit = "дней";
             }
 
             sb.append("Каждые ");
@@ -161,12 +176,17 @@ public class BotUtils {
     }
 
     private static long convertIntervalToMillis(IntervalUnit unit, int value) {
-        if (unit == IntervalUnit.MINUTE) {
-            return value * 60L * 1000L;
-        } else if (unit == IntervalUnit.HOUR)
-            return value * 60L * 60L * 1000L;
-        else
-            return value * 24L * 60L * 60L * 1000L;
+        switch (unit) {
+            case MINUTE -> {
+                return value * 60L * 1000L;
+            }
+            case HOUR -> {
+                return value * 60L * 60L * 1000L;
+            }
+            default -> {
+                return value * 24L * 60L * 60L * 1000L;
+            }
+        }
     }
 
     public static Instant getInstantForRunScheduler(
