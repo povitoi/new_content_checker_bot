@@ -1,4 +1,4 @@
-package com.toolnews.bot.entity;
+package com.toolnews.bot.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

@@ -1,13 +1,12 @@
-package com.toolnews.bot.command;
+package com.toolnews.bot.telegrambot;
 
-import com.toolnews.bot.BotUtils;
-import com.toolnews.bot.entity.SiteSettingEntity;
-import com.toolnews.bot.entity.enumeration.CreateSettingState;
-import com.toolnews.bot.entity.enumeration.IntervalUnit;
-import com.toolnews.bot.entity.enumeration.LinkType;
-import com.toolnews.bot.entity.enumeration.TimeSettingOption;
+import com.toolnews.bot.model.SiteSettingEntity;
+import com.toolnews.bot.model.CreateSettingState;
+import com.toolnews.bot.model.IntervalUnit;
+import com.toolnews.bot.model.LinkType;
+import com.toolnews.bot.model.TimeSettingOption;
 import com.toolnews.bot.repository.SiteSettingRepository;
-import com.toolnews.bot.scheduler.SchedulerManager;
+import com.toolnews.bot.service.SchedulerManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;

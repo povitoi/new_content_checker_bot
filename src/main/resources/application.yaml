@@ -2,15 +2,13 @@ spring:
   messages:
     encoding: UTF-8
   datasource:
-    driver-class-name: org.h2.Driver
-    username: sa
-    url: jdbc:h2:./database/new-content-checker-bot-db
+    url: jdbc:postgresql://localhost:5432/bot-db
+    driver-class-name: org.postgresql.Driver
+    username: admin
+    password: root
   jpa:
     hibernate:
       ddl-auto: validate
-
 telegram:
   bot:
-    token:
-    allowedChatId:
-    zonedId:
+    token: ${NEWS.CHECKER.BOT.TOKEN}

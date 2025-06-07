@@ -1,8 +1,8 @@
-package com.toolnews.bot.scheduler;
+package com.toolnews.bot.service;
 
-import com.toolnews.bot.BotUtils;
-import com.toolnews.bot.entity.SiteSettingEntity;
-import com.toolnews.bot.entity.enumeration.TimeSettingOption;
+import com.toolnews.bot.telegrambot.BotUtils;
+import com.toolnews.bot.model.SiteSettingEntity;
+import com.toolnews.bot.model.TimeSettingOption;
 import com.toolnews.bot.repository.SiteSettingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.TaskScheduler;

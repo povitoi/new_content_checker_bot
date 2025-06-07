@@ -1,4 +1,4 @@
-package com.toolnews.bot.command;
+package com.toolnews.bot.telegrambot;
 
 public interface CommandHandler {
 

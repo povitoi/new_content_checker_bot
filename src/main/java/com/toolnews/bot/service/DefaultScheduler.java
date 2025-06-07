@@ -1,9 +1,9 @@
-package com.toolnews.bot.scheduler;
+package com.toolnews.bot.service;
 
-import com.toolnews.bot.BotUtils;
-import com.toolnews.bot.entity.SiteSettingEntity;
-import com.toolnews.bot.entity.enumeration.LinkType;
-import com.toolnews.bot.entity.enumeration.TimeSettingOption;
+import com.toolnews.bot.telegrambot.BotUtils;
+import com.toolnews.bot.model.SiteSettingEntity;
+import com.toolnews.bot.model.LinkType;
+import com.toolnews.bot.model.TimeSettingOption;
 import com.toolnews.bot.repository.SiteSettingRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 
-import static com.toolnews.bot.NewsBot.TARGET_GROUP_CHAT_ID;
+import static com.toolnews.bot.telegrambot.NewsBot.TARGET_GROUP_CHAT_ID;
 
 
 @Slf4j

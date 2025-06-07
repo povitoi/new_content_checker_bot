@@ -1,4 +1,4 @@
-package com.toolnews.bot.entity.enumeration;
+package com.toolnews.bot.model;
 
 public enum CreateSettingState {
     CREATED,

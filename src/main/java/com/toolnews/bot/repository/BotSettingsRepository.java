@@ -1,6 +1,6 @@
 package com.toolnews.bot.repository;
 
-import com.toolnews.bot.entity.BotSettingsEntity;
+import com.toolnews.bot.model.BotSettingsEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

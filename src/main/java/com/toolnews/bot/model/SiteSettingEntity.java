@@ -1,8 +1,5 @@
-package com.toolnews.bot.entity;
+package com.toolnews.bot.model;
 
-import com.toolnews.bot.entity.enumeration.LinkType;
-import com.toolnews.bot.entity.enumeration.TimeSettingOption;
-import com.toolnews.bot.entity.enumeration.IntervalUnit;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

@@ -1,7 +1,7 @@
-package com.toolnews.bot;
+package com.toolnews.bot.telegrambot;
 
-import com.toolnews.bot.entity.SiteSettingEntity;
-import com.toolnews.bot.entity.enumeration.IntervalUnit;
+import com.toolnews.bot.model.SiteSettingEntity;
+import com.toolnews.bot.model.IntervalUnit;
 import lombok.extern.slf4j.Slf4j;
 
 import java.net.MalformedURLException;
@@ -12,7 +12,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.toolnews.bot.NewsBot.zonedId;
+import static com.toolnews.bot.telegrambot.NewsBot.zonedId;
 
 @Slf4j
 public class BotUtils {
